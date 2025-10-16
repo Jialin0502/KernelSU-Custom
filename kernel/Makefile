@@ -25,7 +25,6 @@ $(info -- KernelSU version: $(KSU_VERSION_FIXED))
 
 # 将版本号作为宏 (KSU_VERSION) 注入到 C/C++ 源代码中
 ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
-endif
 
 ifndef KSU_EXPECTED_SIZE
 KSU_EXPECTED_SIZE := 0x057e
