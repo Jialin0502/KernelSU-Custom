@@ -223,6 +223,12 @@ enum Module {
         id: String,
     },
 
+    /// run action for module <id>
+    Action {
+        // module id
+        id: String,
+    },
+
     /// list all modules
     List,
 
@@ -299,13 +305,13 @@ pub fn run() -> Result<()> {
             #[cfg(any(target_os = "linux", target_os = "android"))]
             {
                 utils::switch_mnt_ns(1)?;
-                utils::unshare_mnt_ns()?;
             }
             match command {
                 Module::Install { zip } => module::install_module(&zip),
                 Module::Uninstall { id } => module::uninstall_module(&id),
                 Module::Enable { id } => module::enable_module(&id),
                 Module::Disable { id } => module::disable_module(&id),
+                Module::Action { id } => module::run_action(&id),
                 Module::List => module::list_modules(),
                 Module::Shrink => module::shrink_ksu_images(),
             }
@@ -368,13 +374,13 @@ pub fn run() -> Result<()> {
         Commands::BootInfo { command } => match command {
             BootInfo::CurrentKmi => {
                 let kmi = crate::boot_patch::get_current_kmi()?;
-                println!("{}", kmi);
+                println!("{kmi}");
                 // return here to avoid printing the error message
                 return Ok(());
             }
             BootInfo::SupportedKmi => {
                 let kmi = crate::assets::list_supported_kmi()?;
-                kmi.iter().for_each(|kmi| println!("{}", kmi));
+                kmi.iter().for_each(|kmi| println!("{kmi}"));
                 return Ok(());
             }
         },
@@ -386,7 +392,7 @@ pub fn run() -> Result<()> {
     };
 
     if let Err(e) = &result {
-        log::error!("Error: {:?}", e);
+        log::error!("Error: {e:?}");
     }
     result
 }

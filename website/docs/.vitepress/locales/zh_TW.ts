@@ -6,7 +6,7 @@ const pkg = require('vitepress/package.json')
 
 export default defineConfig({
   lang: 'zh-TW',
-  description: '一個以核心為基礎，適用於 Android GKI 的 Root 解決方案。',
+  description: '一個基於核心，適用於 Android GKI 的 Root 解決方案。',
 
   themeConfig: {
     nav: nav(),
@@ -23,7 +23,7 @@ export default defineConfig({
 
     footer: {
         message: '係依據 GPL3 授權發行。',
-        copyright: 'Copyright © 2022-目前 KernelSU 開發人員'
+        copyright: 'Copyright © 2022-目前 KernelSU 開發人員。'
     },
 
     editLink: {

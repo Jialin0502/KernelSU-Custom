@@ -19,19 +19,24 @@
 static struct policydb *get_policydb(void)
 {
 	struct policydb *db;
-	struct selinux_policy *policy = rcu_dereference(selinux_state.policy);
+	struct selinux_policy *policy = selinux_state.policy;
 	db = &policy->policydb;
 	return db;
 }
 
+static DEFINE_MUTEX(ksu_rules);
+
 void apply_kernelsu_rules()
 {
+	struct policydb *db;
+
 	if (!getenforce()) {
 		pr_info("SELinux permissive or disabled, apply rules!\n");
 	}
 
-	rcu_read_lock();
-	struct policydb *db = get_policydb();
+	mutex_lock(&ksu_rules);
+
+	db = get_policydb();
 
 	ksu_permissive(db, KERNEL_SU_DOMAIN);
 	ksu_typeattribute(db, KERNEL_SU_DOMAIN, "mlstrustedsubject");
@@ -118,11 +123,11 @@ void apply_kernelsu_rules()
 	// Allow all binder transactions
 	ksu_allow(db, ALL, KERNEL_SU_DOMAIN, "binder", ALL);
 
-    // Allow system server kill su process
-    ksu_allow(db, "system_server", KERNEL_SU_DOMAIN, "process", "getpgid");
-    ksu_allow(db, "system_server", KERNEL_SU_DOMAIN, "process", "sigkill");
+	// Allow system server kill su process
+	ksu_allow(db, "system_server", KERNEL_SU_DOMAIN, "process", "getpgid");
+	ksu_allow(db, "system_server", KERNEL_SU_DOMAIN, "process", "sigkill");
 
-	rcu_read_unlock();
+	mutex_unlock(&ksu_rules);
 }
 
 #define MAX_SEPOL_LEN 128
@@ -184,6 +189,8 @@ static void reset_avc_cache()
 
 int handle_sepolicy(unsigned long arg3, void __user *arg4)
 {
+	struct policydb *db;
+
 	if (!arg4) {
 		return -1;
 	}
@@ -201,9 +208,9 @@ int handle_sepolicy(unsigned long arg3, void __user *arg4)
 	u32 cmd = data.cmd;
 	u32 subcmd = data.subcmd;
 
-	rcu_read_lock();
+	mutex_lock(&ksu_rules);
 
-	struct policydb *db = get_policydb();
+	db = get_policydb();
 
 	int ret = -1;
 	if (cmd == CMD_NORMAL_PERM) {
@@ -453,7 +460,7 @@ int handle_sepolicy(unsigned long arg3, void __user *arg4)
 	}
 
 exit:
-	rcu_read_unlock();
+	mutex_unlock(&ksu_rules);
 
 	// only allow and xallow needs to reset avc cache, but we cannot do that because
 	// we are in atomic context. so we just reset it every time.

@@ -6,60 +6,77 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.add
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.captionBar
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.FileUpload
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import com.maxkeppeker.sheets.core.models.base.Header
-import com.maxkeppeker.sheets.core.models.base.rememberUseCaseState
-import com.maxkeppeler.sheets.list.ListDialog
-import com.maxkeppeler.sheets.list.models.ListOption
-import com.maxkeppeler.sheets.list.models.ListSelection
+import androidx.lifecycle.compose.dropUnlessResumed
 import com.ramcosta.composedestinations.annotation.Destination
+import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import me.weishu.kernelsu.R
-import me.weishu.kernelsu.ui.component.DialogHandle
+import me.weishu.kernelsu.ui.component.ChooseKmiDialog
 import me.weishu.kernelsu.ui.component.rememberConfirmDialog
-import me.weishu.kernelsu.ui.component.rememberCustomDialog
-import me.weishu.kernelsu.ui.screen.destinations.FlashScreenDestination
 import me.weishu.kernelsu.ui.util.LkmSelection
 import me.weishu.kernelsu.ui.util.getCurrentKmi
-import me.weishu.kernelsu.ui.util.getSupportedKmis
 import me.weishu.kernelsu.ui.util.isAbDevice
 import me.weishu.kernelsu.ui.util.isInitBoot
 import me.weishu.kernelsu.ui.util.rootAvailable
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.extra.SuperCheckbox
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.icons.useful.Back
+import top.yukonga.miuix.kmp.icon.icons.useful.Move
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme
+import top.yukonga.miuix.kmp.utils.getWindowSize
+import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
 /**
  * @author weishu
  * @date 2024/3/12.
  */
-@Destination
 @Composable
+@Destination<RootGraph>
 fun InstallScreen(navigator: DestinationsNavigator) {
     var installMethod by remember {
         mutableStateOf<InstallMethod?>(null)
@@ -76,13 +93,16 @@ fun InstallScreen(navigator: DestinationsNavigator) {
                 lkm = lkmSelection,
                 ota = method is InstallMethod.DirectInstallToInactiveSlot
             )
-            navigator.navigate(FlashScreenDestination(flashIt))
+            navigator.navigate(FlashScreenDestination(flashIt)) {
+                launchSingleTop = true
+            }
         }
     }
 
     val currentKmi by produceState(initialValue = "") { value = getCurrentKmi() }
 
-    val selectKmiDialog = rememberSelectKmiDialog { kmi ->
+    val showChooseKmiDialog = rememberSaveable { mutableStateOf(false) }
+    val chooseKmiDialog = ChooseKmiDialog(showChooseKmiDialog) { kmi ->
         kmi?.let {
             lkmSelection = LkmSelection.KmiString(it)
             onInstall()
@@ -92,7 +112,8 @@ fun InstallScreen(navigator: DestinationsNavigator) {
     val onClickNext = {
         if (lkmSelection == LkmSelection.KmiNone && currentKmi.isBlank()) {
             // no lkm file selected and cannot get current kmi
-            selectKmiDialog.show()
+            showChooseKmiDialog.value = true
+            chooseKmiDialog
         } else {
             onInstall()
         }
@@ -113,39 +134,72 @@ fun InstallScreen(navigator: DestinationsNavigator) {
         })
     }
 
-    Scaffold(topBar = {
-        TopBar(
-            onBack = { navigator.popBackStack() }, onLkmUpload = onLkmUpload
-        )
-    }) {
-        Column(modifier = Modifier.padding(it)) {
-            SelectInstallMethod { method ->
-                installMethod = method
-            }
+    val scrollBehavior = MiuixScrollBehavior()
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                (lkmSelection as? LkmSelection.LkmUri)?.let {
-                    Text(
-                        stringResource(
-                            id = R.string.selected_lkm,
-                            it.uri.lastPathSegment ?: "(file)"
+    Scaffold(
+        topBar = {
+            TopBar(
+                onBack = dropUnlessResumed { navigator.popBackStack() },
+                onLkmUpload = onLkmUpload,
+                scrollBehavior = scrollBehavior,
+            )
+        },
+        popupHost = { },
+        contentWindowInsets = WindowInsets.systemBars.add(WindowInsets.displayCutout).only(WindowInsetsSides.Horizontal)
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .height(getWindowSize().height.dp)
+                .scrollEndHaptic()
+                .overScrollVertical()
+                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                .padding(top = 12.dp)
+                .padding(horizontal = 16.dp),
+            contentPadding = innerPadding,
+            overscrollEffect = null,
+        ) {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                ) {
+                    SelectInstallMethod { method ->
+                        installMethod = method
+                    }
+                }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                ) {
+                    (lkmSelection as? LkmSelection.LkmUri)?.let {
+                        Text(
+                            stringResource(
+                                id = R.string.selected_lkm,
+                                it.uri.lastPathSegment ?: "(file)"
+                            )
                         )
-                    )
+                    }
+                    Button(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp),
+                        enabled = installMethod != null,
+                        colors = ButtonDefaults.buttonColorsPrimary(),
+                        onClick = { onClickNext() }
+                    ) {
+                        Text(
+                            stringResource(id = R.string.install_next),
+                            color = colorScheme.onPrimary,
+                            fontSize = MiuixTheme.textStyles.body1.fontSize
+                        )
+                    }
                 }
-                Button(modifier = Modifier.fillMaxWidth(),
-                    enabled = installMethod != null,
-                    onClick = {
-                        onClickNext()
-                    }) {
-                    Text(
-                        stringResource(id = R.string.install_next),
-                        fontSize = MaterialTheme.typography.bodyMedium.fontSize
+                Spacer(
+                    Modifier.height(
+                        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
+                                WindowInsets.captionBar.asPaddingValues().calculateBottomPadding()
                     )
-                }
+                )
             }
         }
     }
@@ -154,7 +208,7 @@ fun InstallScreen(navigator: DestinationsNavigator) {
 sealed class InstallMethod {
     data class SelectFile(
         val uri: Uri? = null,
-        @StringRes override val label: Int = R.string.select_file,
+        @get:StringRes override val label: Int = R.string.select_file,
         override val summary: String?
     ) : InstallMethod()
 
@@ -179,8 +233,7 @@ private fun SelectInstallMethod(onSelected: (InstallMethod) -> Unit = {}) {
     val selectFileTip = stringResource(
         id = R.string.select_file_tip, if (isInitBoot()) "init_boot" else "boot"
     )
-    val radioOptions =
-        mutableListOf<InstallMethod>(InstallMethod.SelectFile(summary = selectFileTip))
+    val radioOptions = mutableListOf<InstallMethod>(InstallMethod.SelectFile(summary = selectFileTip))
     if (rootAvailable) {
         radioOptions.add(InstallMethod.DirectInstall)
 
@@ -202,10 +255,12 @@ private fun SelectInstallMethod(onSelected: (InstallMethod) -> Unit = {}) {
         }
     }
 
-    val confirmDialog = rememberConfirmDialog(onConfirm = {
-        selectedOption = InstallMethod.DirectInstallToInactiveSlot
-        onSelected(InstallMethod.DirectInstallToInactiveSlot)
-    }, onDismiss = null)
+    val confirmDialog = rememberConfirmDialog(
+        onConfirm = {
+            selectedOption = InstallMethod.DirectInstallToInactiveSlot
+            onSelected(InstallMethod.DirectInstallToInactiveSlot)
+        }
+    )
     val dialogTitle = stringResource(id = android.R.string.dialog_alert_title)
     val dialogContent = stringResource(id = R.string.install_inactive_slot_warning)
 
@@ -231,81 +286,66 @@ private fun SelectInstallMethod(onSelected: (InstallMethod) -> Unit = {}) {
 
     Column {
         radioOptions.forEach { option ->
-            Row(verticalAlignment = Alignment.CenterVertically,
+            val interactionSource = remember { MutableInteractionSource() }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable {
-                        onClick(option)
-                    }) {
-                RadioButton(selected = option.javaClass == selectedOption?.javaClass, onClick = {
-                    onClick(option)
-                })
-                Column {
-                    Text(
-                        text = stringResource(id = option.label),
-                        fontSize = MaterialTheme.typography.titleMedium.fontSize,
-                        fontFamily = MaterialTheme.typography.titleMedium.fontFamily,
-                        fontStyle = MaterialTheme.typography.titleMedium.fontStyle
+                    .toggleable(
+                        value = option.javaClass == selectedOption?.javaClass,
+                        onValueChange = {
+                            onClick(option)
+                        },
+                        role = Role.RadioButton,
+                        indication = LocalIndication.current,
+                        interactionSource = interactionSource
                     )
-                    option.summary?.let {
-                        Text(
-                            text = it,
-                            fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                            fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                            fontStyle = MaterialTheme.typography.bodySmall.fontStyle
-                        )
-                    }
-                }
+            ) {
+                SuperCheckbox(
+                    title = stringResource(id = option.label),
+                    summary = option.summary,
+                    checked = option.javaClass == selectedOption?.javaClass,
+                    onCheckedChange = {
+                        onClick(option)
+                    },
+                )
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun rememberSelectKmiDialog(onSelected: (String?) -> Unit): DialogHandle {
-    return rememberCustomDialog { dismiss ->
-        val supportedKmi by produceState(initialValue = emptyList<String>()) {
-            value = getSupportedKmis()
-        }
-        val options = supportedKmi.map { value ->
-            ListOption(
-                titleText = value
-            )
-        }
-
-        var selection by remember { mutableStateOf<String?>(null) }
-        ListDialog(state = rememberUseCaseState(visible = true, onFinishedRequest = {
-            onSelected(selection)
-        }, onCloseRequest = {
-            dismiss()
-        }), header = Header.Default(
-            title = stringResource(R.string.select_kmi),
-        ), selection = ListSelection.Single(
-            showRadioButtons = true,
-            options = options,
-        ) { _, option ->
-            selection = option.titleText
-        })
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TopBar(onBack: () -> Unit = {}, onLkmUpload: () -> Unit = {}) {
-    TopAppBar(title = { Text(stringResource(R.string.install)) }, navigationIcon = {
-        IconButton(
-            onClick = onBack
-        ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null) }
-    }, actions = {
-        IconButton(onClick = onLkmUpload) {
-            Icon(Icons.Filled.FileUpload, contentDescription = null)
-        }
-    })
-}
-
-@Composable
-@Preview
-fun SelectInstall_Preview() {
-    InstallScreen(EmptyDestinationsNavigator)
+private fun TopBar(
+    onBack: () -> Unit = {},
+    onLkmUpload: () -> Unit = {},
+    scrollBehavior: ScrollBehavior,
+) {
+    TopAppBar(
+        title = stringResource(R.string.install),
+        navigationIcon = {
+            IconButton(
+                modifier = Modifier.padding(start = 16.dp),
+                onClick = onBack
+            ) {
+                Icon(
+                    MiuixIcons.Useful.Back,
+                    tint = colorScheme.onSurface,
+                    contentDescription = null,
+                )
+            }
+        },
+        actions = {
+            IconButton(
+                modifier = Modifier.padding(end = 16.dp),
+                onClick = onLkmUpload
+            ) {
+                Icon(
+                    MiuixIcons.Useful.Move,
+                    tint = colorScheme.onSurface,
+                    contentDescription = null
+                )
+            }
+        },
+        scrollBehavior = scrollBehavior
+    )
 }

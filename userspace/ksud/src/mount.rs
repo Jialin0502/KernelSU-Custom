@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Ok, Result};
+use anyhow::{Ok, Result, anyhow, bail};
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 use anyhow::Context;
@@ -63,21 +63,18 @@ pub fn mount_ext4(source: impl AsRef<Path>, target: impl AsRef<Path>) -> Result<
         .attach(source)
         .with_context(|| "Failed to attach loop")?;
     let lo = new_loopback.path().ok_or(anyhow!("no loop"))?;
-    if let Result::Ok(fs) = fsopen("ext4", FsOpenFlags::FSOPEN_CLOEXEC) {
-        let fs = fs.as_fd();
-        fsconfig_set_string(fs, "source", lo)?;
-        fsconfig_create(fs)?;
-        let mount = fsmount(fs, FsMountFlags::FSMOUNT_CLOEXEC, MountAttrFlags::empty())?;
-        move_mount(
-            mount.as_fd(),
-            "",
-            CWD,
-            target.as_ref(),
-            MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH,
-        )?;
-    } else {
-        mount(lo, target.as_ref(), "ext4", MountFlags::empty(), "")?;
-    }
+    let fs = fsopen("ext4", FsOpenFlags::FSOPEN_CLOEXEC)?;
+    let fs = fs.as_fd();
+    fsconfig_set_string(fs, "source", lo)?;
+    fsconfig_create(fs)?;
+    let mount = fsmount(fs, FsMountFlags::FSMOUNT_CLOEXEC, MountAttrFlags::empty())?;
+    move_mount(
+        mount.as_fd(),
+        "",
+        CWD,
+        target.as_ref(),
+        MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH,
+    )?;
     Ok(())
 }
 
@@ -138,7 +135,7 @@ pub fn mount_overlayfs(
     })();
 
     if let Err(e) = result {
-        warn!("fsopen mount failed: {:#}, fallback to mount", e);
+        warn!("fsopen mount failed: {e:#}, fallback to mount");
         let mut data = format!("lowerdir={lowerdir_config}");
         if let (Some(upperdir), Some(workdir)) = (upperdir, workdir) {
             data = format!("{data},upperdir={upperdir},workdir={workdir}");
@@ -157,27 +154,18 @@ pub fn mount_overlayfs(
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn mount_tmpfs(dest: impl AsRef<Path>) -> Result<()> {
     info!("mount tmpfs on {}", dest.as_ref().display());
-    if let Result::Ok(fs) = fsopen("tmpfs", FsOpenFlags::FSOPEN_CLOEXEC) {
-        let fs = fs.as_fd();
-        fsconfig_set_string(fs, "source", KSU_OVERLAY_SOURCE)?;
-        fsconfig_create(fs)?;
-        let mount = fsmount(fs, FsMountFlags::FSMOUNT_CLOEXEC, MountAttrFlags::empty())?;
-        move_mount(
-            mount.as_fd(),
-            "",
-            CWD,
-            dest.as_ref(),
-            MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH,
-        )?;
-    } else {
-        mount(
-            KSU_OVERLAY_SOURCE,
-            dest.as_ref(),
-            "tmpfs",
-            MountFlags::empty(),
-            "",
-        )?;
-    }
+    let fs = fsopen("tmpfs", FsOpenFlags::FSOPEN_CLOEXEC)?;
+    let fs = fs.as_fd();
+    fsconfig_set_string(fs, "source", KSU_OVERLAY_SOURCE)?;
+    fsconfig_create(fs)?;
+    let mount = fsmount(fs, FsMountFlags::FSMOUNT_CLOEXEC, MountAttrFlags::empty())?;
+    move_mount(
+        mount.as_fd(),
+        "",
+        CWD,
+        dest.as_ref(),
+        MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH,
+    )?;
     Ok(())
 }
 
@@ -188,29 +176,20 @@ pub fn bind_mount(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<()> {
         from.as_ref().display(),
         to.as_ref().display()
     );
-    if let Result::Ok(tree) = open_tree(
+    let tree = open_tree(
         CWD,
         from.as_ref(),
         OpenTreeFlags::OPEN_TREE_CLOEXEC
             | OpenTreeFlags::OPEN_TREE_CLONE
             | OpenTreeFlags::AT_RECURSIVE,
-    ) {
-        move_mount(
-            tree.as_fd(),
-            "",
-            CWD,
-            to.as_ref(),
-            MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH,
-        )?;
-    } else {
-        mount(
-            from.as_ref(),
-            to.as_ref(),
-            "",
-            MountFlags::BIND | MountFlags::REC,
-            "",
-        )?;
-    }
+    )?;
+    move_mount(
+        tree.as_fd(),
+        "",
+        CWD,
+        to.as_ref(),
+        MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH,
+    )?;
     Ok(())
 }
 
@@ -246,7 +225,7 @@ fn mount_overlay_child(
     }
     // merge modules and stock
     if let Err(e) = mount_overlayfs(&lower_dirs, stock_root, None, None, mount_point) {
-        warn!("failed: {:#}, fallback to bind mount", e);
+        warn!("failed: {e:#}, fallback to bind mount");
         bind_mount(stock_root, mount_point)?;
     }
     Ok(())
@@ -259,7 +238,7 @@ pub fn mount_overlay(
     workdir: Option<PathBuf>,
     upperdir: Option<PathBuf>,
 ) -> Result<()> {
-    info!("mount overlay for {}", root);
+    info!("mount overlay for {root}");
     std::env::set_current_dir(root).with_context(|| format!("failed to chdir to {root}"))?;
     let stock_root = ".";
 
@@ -290,10 +269,7 @@ pub fn mount_overlay(
             continue;
         }
         if let Err(e) = mount_overlay_child(mount_point, &relative, module_roots, &stock_root) {
-            warn!(
-                "failed to mount overlay for child {}: {:#}, revert",
-                mount_point, e
-            );
+            warn!("failed to mount overlay for child {mount_point}: {e:#}, revert");
             umount_dir(root).with_context(|| format!("failed to revert {root}"))?;
             bail!(e);
         }

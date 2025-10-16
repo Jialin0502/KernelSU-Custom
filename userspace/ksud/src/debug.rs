@@ -1,4 +1,4 @@
-use anyhow::{ensure, Context, Ok, Result};
+use anyhow::{Context, Ok, Result, ensure};
 use std::{
     path::{Path, PathBuf},
     process::Command,
@@ -30,7 +30,7 @@ fn set_kernel_param(uid: u32) -> Result<()> {
 fn get_pkg_uid(pkg: &str) -> Result<u32> {
     // stat /data/data/<pkg>
     let uid = rustix::fs::stat(format!("/data/data/{pkg}"))
-        .with_context(|| format!("stat /data/data/{}", pkg))?
+        .with_context(|| format!("stat /data/data/{pkg}"))?
         .st_uid;
     Ok(uid)
 }

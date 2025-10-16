@@ -27,6 +27,8 @@
 
 #define CMD_IS_UID_GRANTED_ROOT 12
 #define CMD_IS_UID_SHOULD_UMOUNT 13
+#define CMD_IS_SU_ENABLED 14
+#define CMD_ENABLE_SU 15
 
 static bool ksuctl(int cmd, void* arg1, void* arg2) {
     int32_t result = 0;
@@ -48,12 +50,13 @@ bool become_manager(const char* pkg) {
 }
 
 // cache the result to avoid unnecessary syscall
-static bool is_lkm;
-int get_version() {
+static bool is_lkm = false;
+
+int get_version(void) {
     int32_t version = -1;
-    int32_t lkm = 0;
-    ksuctl(CMD_GET_VERSION, &version, &lkm);
-    if (!is_lkm && lkm != 0) {
+    int32_t flags = 0;
+    ksuctl(CMD_GET_VERSION, &version, &flags); 
+    if (!is_lkm && (flags & 0x1)) {
         is_lkm = true;
     }
     return version;
@@ -83,4 +86,15 @@ bool set_app_profile(const app_profile *profile) {
 
 bool get_app_profile(p_key_t key, app_profile *profile) {
     return ksuctl(CMD_GET_APP_PROFILE, (void*) profile, nullptr);
+}
+
+bool set_su_enabled(bool enabled) {
+    return ksuctl(CMD_ENABLE_SU, (void*) enabled, nullptr);
+}
+
+bool is_su_enabled() {
+    bool enabled = true;
+    // if ksuctl failed, we assume su is enabled, and it cannot be disabled.
+    ksuctl(CMD_IS_SU_ENABLED, &enabled, nullptr);
+    return enabled;
 }
