@@ -27,7 +27,7 @@ $(info -- KernelSU version: $(KSU_VERSION_FIXED))
 ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
 
 ifndef KSU_EXPECTED_SIZE
-KSU_EXPECTED_SIZE := 0x057e
+KSU_EXPECTED_SIZE := 0x57d
 endif
 
 ifndef KSU_EXPECTED_HASH
