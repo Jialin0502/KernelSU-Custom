@@ -21,7 +21,7 @@ obj-$(CONFIG_KSU) += kernelsu.o
 KSU_VERSION := 12128
 
 # 在编译时打印手动设置的版本号
-$(info -- KernelSU version: $(KSU_VERSION_FIXED))
+$(info -- KernelSU version: $(KSU_VERSION))
 
 # 将版本号作为宏 (KSU_VERSION) 注入到 C/C++ 源代码中
 ccflags-y += -DKSU_VERSION=$(KSU_VERSION)

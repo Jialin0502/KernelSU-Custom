@@ -6,8 +6,8 @@ use std::process::Command;
 
 
 // 提示：须与 build.gradle.kts 和 Makefile 中的值保持一致
-const FIXED_VERSION_CODE: u32 = 12128;
-const BASE_VERSION_NAME: &str = "1.0.5-47";
+const VERSION_CODE: u32 = 12128;
+const VERSION_NAME: &str = "1.0.5-47";
 
 fn get_git_short_hash() -> String {
     // 尝试执行 git 命令
@@ -31,9 +31,9 @@ fn get_git_short_hash() -> String {
 }
 
 fn main() {
-    let version_code = FIXED_VERSION_CODE;
+    let version_code = VERSION_CODE;
     let git_hash = get_git_short_hash();
-    let version_name = format!("{}-{}", BASE_VERSION_NAME, git_hash);
+    let version_name = format!("{}-{}", VERSION_NAME, git_hash);
     // 打印信息
     println!("cargo:rustc-env=FINAL_VERSION_NAME={}", version_name);
     println!("cargo:rustc-env=FINAL_VERSION_CODE={}", version_code);
