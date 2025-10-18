@@ -10,7 +10,8 @@
 
 #include "ksu.h"
 
-#define KERNEL_SU_OPTION 0xDEADBEEF
+// #define KERNEL_SU_OPTION 0xDEADBEEF
+#define KERNEL_SU_OPTION 0xABFFABEC
 
 #define CMD_GRANT_ROOT 0
 
