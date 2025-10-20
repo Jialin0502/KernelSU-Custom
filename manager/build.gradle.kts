@@ -34,8 +34,8 @@ val androidSourceCompatibility = JavaVersion.VERSION_21
 val androidTargetCompatibility = JavaVersion.VERSION_21
 
 // --- 手动设置版本信息 ---
-val appVersionCode = 12128
-val appVersionName = "v1.0.5-47"
+val appVersionCode = 12131
+val appVersionName = "v1.0.5-50"
 
 // --- 生成版本信息 ---
 val managerVersionCode by extra(appVersionCode)

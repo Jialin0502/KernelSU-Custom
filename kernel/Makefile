@@ -18,7 +18,7 @@ obj-$(CONFIG_KSU) += kernelsu.o
 
 # 提示：此处的 KSU_VERSION 值须与manager项目目录中
 # build.gradle.kts 文件的 appVersionCode 值保持一致
-KSU_VERSION := 12128
+KSU_VERSION := 12131
 
 # 在编译时打印手动设置的版本号
 $(info -- KernelSU version: $(KSU_VERSION))
@@ -27,10 +27,12 @@ $(info -- KernelSU version: $(KSU_VERSION))
 ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
 
 ifndef KSU_EXPECTED_SIZE
+# KSU_EXPECTED_SIZE := 0x033b
 KSU_EXPECTED_SIZE := 0x57e
 endif
 
 ifndef KSU_EXPECTED_HASH
+# KSU_EXPECTED_HASH := c371061b19d8c7d7d6133c6a9bafe198fa944e50c1b31c9d8daa8d7f1fc2d2d6
 KSU_EXPECTED_HASH := c656015a34669996d529fad1dcb0f78d1965eb33543486788a7991042b07ed26
 endif
 

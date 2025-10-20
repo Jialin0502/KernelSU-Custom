@@ -6,8 +6,8 @@ use std::process::Command;
 
 
 // 提示：须与 build.gradle.kts 和 Makefile 中的值保持一致
-const VERSION_CODE: u32 = 12128;
-const VERSION_NAME: &str = "1.0.5-47";
+const VERSION_CODE: u32 = 12131;
+const VERSION_NAME: &str = "1.0.5-50";
 
 fn get_git_short_hash() -> String {
     // 尝试执行 git 命令
