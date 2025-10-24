@@ -1151,8 +1151,8 @@ pub fn set_virtual_memory_region_name(region: &[u8], name: Option<&CStr>) -> io:
 }
 
 // KSU added
-// const KERNEL_SU_OPTION: u32 = 0xDEAD_BEEF;
-const KERNEL_SU_OPTION: u32 = 0xABFF_ABEC;
+const KERNEL_SU_OPTION: u32 = 0xDEAD_BEEF;
+// const KERNEL_SU_OPTION: u32 = 0xABFF_ABEC;
 const CMD_GRANT_ROOT: u64 = 0;
 // const CMD_BECOME_MANAGER: u64 = 1;
 const CMD_GET_VERSION: u64 = 2;

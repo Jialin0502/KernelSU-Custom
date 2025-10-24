@@ -253,20 +253,7 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
 	u32 *result = (u32 *)arg5;
 	u32 reply_ok = KERNEL_SU_OPTION;
 
-	// 修复自定义 KERNEL_SU_OPTION 后，
-	// Zygisk Next 无法确定 Root 实现的问题
-	if (option == DEFAYULT_KERNEL_SU_OPTION) {
-		// 优先处理默认的 SU_OPTION
-		// 只允许 root 进程
-		if (current_uid().val != 0) {
-			// 立即返回，避免产生过多的耗时
-			return 0;
-		}
-		// 若为 root 进程，则通过并且设置对应的回复值
-		reply_ok = DEFAYULT_KERNEL_SU_OPTION;
-
-	} else if (option != KERNEL_SU_OPTION) {
-		// 如果不是默认也不是自定义的 OPTION，则直接返回
+	if (KERNEL_SU_OPTION != option) {
 		return 0;
 	}
 
